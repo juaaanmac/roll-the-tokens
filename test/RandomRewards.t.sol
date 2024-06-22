@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SignedMath} from "@openzeppelin/contracts/utils/math/SignedMath.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MockV3Aggregator} from "@chainlink/contracts/src/v0.8/tests/MockV3Aggregator.sol";
 import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
@@ -32,12 +33,20 @@ contract RandomRewardsTest is Test {
         priceFeed = new PriceFeed(address(aggregatorMock));
         chipToken = new ChipToken(address(priceFeed));
         vrfCoordinatorMock = new VRFCoordinatorV2Mock(1, 1);
-        randomRewards =
-            new RandomRewards(SUSCRIPTION_ID, address(vrfCoordinatorMock), address(chipToken), RANDOM_MIN, RANDOM_MAX);
+        randomRewards = new RandomRewards(
+            SUSCRIPTION_ID,
+            address(vrfCoordinatorMock),
+            address(chipToken),
+            RANDOM_MIN,
+            RANDOM_MAX
+        );
 
         vrfCoordinatorMock.createSubscription();
         vrfCoordinatorMock.addConsumer(SUSCRIPTION_ID, address(randomRewards));
-        vrfCoordinatorMock.fundSubscription(SUSCRIPTION_ID, 1000000000000000000);
+        vrfCoordinatorMock.fundSubscription(
+            SUSCRIPTION_ID,
+            1000000000000000000
+        );
     }
 
     function testDepositBalance(uint256 value) public {
@@ -54,7 +63,11 @@ contract RandomRewardsTest is Test {
         randomRewards.deposit(chipTokensAmount);
 
         assertEq(chipToken.balanceOf(USER), 0, "invalid user balance");
-        assertEq(chipToken.balanceOf(address(randomRewards)), chipTokensAmount, "invalid RandomRewards balance");
+        assertEq(
+            chipToken.balanceOf(address(randomRewards)),
+            chipTokensAmount,
+            "invalid RandomRewards balance"
+        );
     }
 
     function testDepositEvent(uint256 value) public {
@@ -111,7 +124,9 @@ contract RandomRewardsTest is Test {
         randomRewards.roll();
     }
 
-    function testGetRequestStatusRevertsIfRequestIdDoesNotExists(uint256 nonExistentRequestId) public {
+    function testGetRequestStatusRevertsIfRequestIdDoesNotExists(
+        uint256 nonExistentRequestId
+    ) public {
         vm.assume(nonExistentRequestId > 1);
 
         vm.expectRevert("nonexistent request");
@@ -131,9 +146,14 @@ contract RandomRewardsTest is Test {
 
         uint256 requestId = randomRewards.roll();
 
-        vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
+        vrfCoordinatorMock.fulfillRandomWords(
+            requestId,
+            address(randomRewards)
+        );
 
-        (bool fulfilled, uint256 randomResult) = randomRewards.getRequestStatus(requestId);
+        (bool fulfilled, uint256 randomResult) = randomRewards.getRequestStatus(
+            requestId
+        );
 
         uint256 expectedResult = _expectedRandomResult(requestId);
 
@@ -152,8 +172,13 @@ contract RandomRewardsTest is Test {
 
         uint256 requestId = randomRewards.roll();
 
-        vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
-        (bool fulfilled, uint256 randomResult) = randomRewards.getRequestStatus(requestId);
+        vrfCoordinatorMock.fulfillRandomWords(
+            requestId,
+            address(randomRewards)
+        );
+        (bool fulfilled, uint256 randomResult) = randomRewards.getRequestStatus(
+            requestId
+        );
         assertEq(fulfilled, true);
         assertEq(randomResult, _expectedRandomResult(requestId));
     }
@@ -171,22 +196,32 @@ contract RandomRewardsTest is Test {
 
         vm.expectEmit(true, true, false, false);
         emit RequestFulfilled(requestId, _expectedRandomResult(requestId));
-        vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
+        vrfCoordinatorMock.fulfillRandomWords(
+            requestId,
+            address(randomRewards)
+        );
     }
 
-    function testFulfillRandomWordsRevertsIfRequestIdDoesNotExists(uint256 nonExistentRequestId) public {
+    function testFulfillRandomWordsRevertsIfRequestIdDoesNotExists(
+        uint256 nonExistentRequestId
+    ) public {
         vm.assume(nonExistentRequestId > 1);
         vm.expectRevert("nonexistent request");
-        vrfCoordinatorMock.fulfillRandomWords(nonExistentRequestId, address(randomRewards));
+        vrfCoordinatorMock.fulfillRandomWords(
+            nonExistentRequestId,
+            address(randomRewards)
+        );
     }
 
-    function testWithdrawRevertsIfRequestIdDoesNotExists(uint256 nonExistentRequestId) public {
+    function testWithdrawRevertsIfRequestIdDoesNotExists(
+        uint256 nonExistentRequestId
+    ) public {
         vm.assume(nonExistentRequestId > 1);
         vm.expectRevert("nonexistent request");
         randomRewards.withdraw(nonExistentRequestId);
     }
 
-    function testWithdraw(uint256 value) public {
+    function testWithdrawBalance(uint256 value) public {
         vm.assume(value > 1000000);
         uint256 chipTokensAmount = _enter(value);
 
@@ -197,12 +232,18 @@ contract RandomRewardsTest is Test {
 
         uint256 requestId = randomRewards.roll();
 
-        vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
+        vrfCoordinatorMock.fulfillRandomWords(
+            requestId,
+            address(randomRewards)
+        );
+
+        uint256 rewards = _calculateRewards(USER, requestId);
 
         randomRewards.withdraw(requestId);
 
-        // todo: check balances
-        //assertEq(chipToken.balanceOf(USER), value);
+        assertEq(randomRewards.balanceOf(USER), 0);
+        assertEq(chipToken.balanceOf(USER),rewards);
+        assertEq(chipToken.balanceOf(address(randomRewards)),chipTokensAmount-rewards);
     }
 
     //vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
@@ -221,8 +262,31 @@ contract RandomRewardsTest is Test {
         amount = value_ / uint256(price);
     }
 
-    function _expectedRandomResult(uint256 requestId) internal returns (uint256) {
+    function _expectedRandomResult(
+        uint256 requestId
+    ) internal pure returns (uint256) {
         return uint256(keccak256(abi.encode(requestId, 0)));
+    }
+
+    function _calculateRewards(
+        address player,
+        uint256 requestId
+    ) internal view returns (uint256) {
+        (, uint256 randomResult) = randomRewards.getRequestStatus(requestId);
+
+        // To generate a random number between -5 and 10 inclusive
+        int256 randomNumber = (int256(randomResult) % RANDOM_MAX) + RANDOM_MIN;
+
+        uint256 balance = randomRewards.balanceOf(player);
+        uint256 amount = 0;
+
+        if (randomNumber > 0) {
+            amount = balance + (balance * SignedMath.abs(randomNumber)) / 100;
+        } else if (randomNumber < 0) {
+            amount = balance - (balance * SignedMath.abs(randomNumber)) / 100;
+        }
+
+        return amount;
     }
 
     // function testEnterRevertIfValueIsZero() public {
