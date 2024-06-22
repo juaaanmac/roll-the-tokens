@@ -31,7 +31,7 @@ contract RandomRewards is Context, VRFConsumerBaseV2 {
     int8 internal immutable RANDOM_MAX;
 
     // address --> balance
-    mapping(address => uint256) internal balanceOf;
+    mapping(address => uint256) internal _balances;
 
     // Chainlink Variables
     VRFCoordinatorV2Interface internal immutable _coordinator;
@@ -74,14 +74,14 @@ contract RandomRewards is Context, VRFConsumerBaseV2 {
     function deposit(uint256 amount) external {
         address sender = _msgSender();
         _chipToken.safeTransferFrom(sender, address(this), amount);
-        balanceOf[sender] += amount;
+        _balances[sender] += amount;
         totalStaked += amount;
         emit DepositMade(sender, amount);
     }
 
     function roll() external returns (uint256) {
         address player = _msgSender();
-        require(balanceOf[player] > 0, "no balance");
+        require(_balances[player] > 0, "no balance");
 
         //Calling requestRandomWords from the coordinator contract
         uint256 requestId =
@@ -91,7 +91,7 @@ contract RandomRewards is Context, VRFConsumerBaseV2 {
         s_requests[requestId] = RequestStatus({randomResult: 0, player: player, exists: true, fulfilled: false});
 
         // increase allowance in ChipToken
-        _chipToken.safeIncreaseAllowance(address(this), balanceOf[player]);
+        _chipToken.safeIncreaseAllowance(address(this), _balances[player]);
 
         emit RequestSent(requestId);
 
@@ -121,7 +121,7 @@ contract RandomRewards is Context, VRFConsumerBaseV2 {
         // To generate a random number between -5 and 10 inclusive
         int256 randomNumber = (int256(request.randomResult) % RANDOM_MAX) + RANDOM_MIN;
 
-        uint256 balance = balanceOf[player];
+        uint256 balance = _balances[player];
         uint256 amount = 0;
 
         if (randomNumber > 0) {
@@ -132,7 +132,7 @@ contract RandomRewards is Context, VRFConsumerBaseV2 {
 
         _chipToken.safeTransferFrom(address(this), player, amount);
 
-        balanceOf[player] = 0;
+        _balances[player] = 0;
     }
 
     function getRequestStatus(uint256 _requestId)
@@ -143,5 +143,9 @@ contract RandomRewards is Context, VRFConsumerBaseV2 {
     {
         RequestStatus memory request = s_requests[_requestId];
         return (request.fulfilled, request.randomResult);
+    }
+
+    function balanceOf(address account) external view virtual returns (uint256) {
+        return _balances[account];
     }
 }
