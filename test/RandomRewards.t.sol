@@ -23,28 +23,24 @@ contract RandomRewardsTest is Test {
     address constant USER = address(1);
     uint64 constant SUSCRIPTION_ID = 1;
 
-    event RequestSent(uint256 requestId, uint32 numWords);
-    event RequestFulfilled(uint256 requestId, uint256[] randomWords);
+    event DepositMade(address account, uint256 amount);
+    event RequestSent(uint256 requestId);
+    event RequestFulfilled(uint256 requestId, uint256 randomResult);
 
     function setUp() public {
         aggregatorMock = new MockV3Aggregator(DECIMALS, INITIAL_ANSWER);
         priceFeed = new PriceFeed(address(aggregatorMock));
         chipToken = new ChipToken(address(priceFeed));
         vrfCoordinatorMock = new VRFCoordinatorV2Mock(1, 1);
-        randomRewards = new RandomRewards(
-            SUSCRIPTION_ID,
-            address(vrfCoordinatorMock),
-            address(chipToken),
-            RANDOM_MIN,
-            RANDOM_MAX
-        );
+        randomRewards =
+            new RandomRewards(SUSCRIPTION_ID, address(vrfCoordinatorMock), address(chipToken), RANDOM_MIN, RANDOM_MAX);
 
         vrfCoordinatorMock.createSubscription();
         vrfCoordinatorMock.addConsumer(SUSCRIPTION_ID, address(randomRewards));
         vrfCoordinatorMock.fundSubscription(SUSCRIPTION_ID, 1000000000000000000);
     }
 
-    function testDeposit(uint256 value) public {
+    function testDepositBalance(uint256 value) public {
         vm.assume(value > 0);
         uint256 chipTokensAmount = _enter(value);
 
@@ -57,11 +53,72 @@ contract RandomRewardsTest is Test {
         vm.prank(USER);
         randomRewards.deposit(chipTokensAmount);
 
-        assertEq(chipToken.balanceOf(USER), 0);
-        assertEq(chipToken.balanceOf(address(randomRewards)), chipTokensAmount);
+        assertEq(chipToken.balanceOf(USER), 0, "invalid user balance");
+        assertEq(chipToken.balanceOf(address(randomRewards)), chipTokensAmount, "invalid RandomRewards balance");
     }
 
-    function testRoll() public {
+    function testDepositEvent(uint256 value) public {
+        vm.assume(value > 0);
+        uint256 chipTokensAmount = _enter(value);
+
+        assertEq(chipToken.balanceOf(USER), chipTokensAmount);
+        assertEq(chipToken.balanceOf(address(randomRewards)), 0);
+
+        vm.prank(USER);
+        chipToken.approve(address(randomRewards), chipTokensAmount);
+
+        vm.prank(USER);
+        vm.expectEmit(true, true, false, false);
+        emit DepositMade(USER, chipTokensAmount);
+        randomRewards.deposit(chipTokensAmount);
+    }
+
+    function testRoll(uint256 value) public {
+        vm.assume(value > 1000000);
+        uint256 chipTokensAmount = _enter(value);
+
+        vm.startPrank(USER);
+        chipToken.approve(address(randomRewards), chipTokensAmount);
+
+        randomRewards.deposit(chipTokensAmount);
+
+        uint256 requestId = randomRewards.roll();
+        uint256 expectedRequestId = 1;
+        assertEq(requestId, expectedRequestId);
+    }
+
+    function testRollEvent() public {
+        uint256 value = 1000000000;
+
+        vm.assume(value > 1000000);
+        uint256 chipTokensAmount = _enter(value);
+
+        vm.startPrank(USER);
+        chipToken.approve(address(randomRewards), chipTokensAmount);
+
+        randomRewards.deposit(chipTokensAmount);
+
+        uint256 expectedRequestId = 1;
+
+        vm.expectEmit(true, false, false, false);
+        emit RequestSent(expectedRequestId);
+        randomRewards.roll();
+    }
+
+    function testRollRevertIfUserDidNotDeposit() public {
+        vm.prank(USER);
+        vm.expectRevert("no balance");
+        randomRewards.roll();
+    }
+
+    function testGetRequestStatusRevertsIfRequestIdDoesNotExists(uint256 nonExistentRequestId) public {
+        vm.assume(nonExistentRequestId > 1);
+
+        vm.expectRevert("nonexistent request");
+        randomRewards.getRequestStatus(nonExistentRequestId);
+    }
+
+    function testGetRequestStatus() public {
         uint256 value = 1000000000;
 
         vm.assume(value > 0);
@@ -73,15 +130,86 @@ contract RandomRewardsTest is Test {
         randomRewards.deposit(chipTokensAmount);
 
         uint256 requestId = randomRewards.roll();
-        
+
+        vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
+
+        (bool fulfilled, uint256 randomResult) = randomRewards.getRequestStatus(requestId);
+
+        uint256 expectedResult = _expectedRandomResult(requestId);
+
+        assertEq(fulfilled, true);
+        assertEq(randomResult, expectedResult);
+    }
+
+    function testFulfillRandomWords(uint256 value) public {
+        vm.assume(value > 1000000);
+        uint256 chipTokensAmount = _enter(value);
+
+        vm.startPrank(USER);
+        chipToken.approve(address(randomRewards), chipTokensAmount);
+
+        randomRewards.deposit(chipTokensAmount);
+
+        uint256 requestId = randomRewards.roll();
+
+        vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
+        (bool fulfilled, uint256 randomResult) = randomRewards.getRequestStatus(requestId);
+        assertEq(fulfilled, true);
+        assertEq(randomResult, _expectedRandomResult(requestId));
+    }
+
+    function testFulfillRandomWordsEvent(uint256 value) public {
+        vm.assume(value > 1000000);
+        uint256 chipTokensAmount = _enter(value);
+
+        vm.startPrank(USER);
+        chipToken.approve(address(randomRewards), chipTokensAmount);
+
+        randomRewards.deposit(chipTokensAmount);
+
+        uint256 requestId = randomRewards.roll();
+
+        vm.expectEmit(true, true, false, false);
+        emit RequestFulfilled(requestId, _expectedRandomResult(requestId));
+        vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
+    }
+
+    function testFulfillRandomWordsRevertsIfRequestIdDoesNotExists(uint256 nonExistentRequestId) public {
+        vm.assume(nonExistentRequestId > 1);
+        vm.expectRevert("nonexistent request");
+        vrfCoordinatorMock.fulfillRandomWords(nonExistentRequestId, address(randomRewards));
+    }
+
+    function testWithdrawRevertsIfRequestIdDoesNotExists(uint256 nonExistentRequestId) public {
+        vm.assume(nonExistentRequestId > 1);
+        vm.expectRevert("nonexistent request");
+        randomRewards.withdraw(nonExistentRequestId);
+    }
+
+    function testWithdraw(uint256 value) public {
+        vm.assume(value > 1000000);
+        uint256 chipTokensAmount = _enter(value);
+
+        vm.startPrank(USER);
+        chipToken.approve(address(randomRewards), chipTokensAmount);
+
+        randomRewards.deposit(chipTokensAmount);
+
+        uint256 requestId = randomRewards.roll();
+
         vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
 
         randomRewards.withdraw(requestId);
 
-        console.log(chipToken.balanceOf(USER));
-        console.log(chipToken.balanceOf(address(randomRewards)));
+        // todo: check balances
+        //assertEq(chipToken.balanceOf(USER), value);
     }
 
+    //vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
+    // randomRewards.withdraw(requestId);
+
+    //     console.log(chipToken.balanceOf(USER));
+    //     console.log(chipToken.balanceOf(address(randomRewards)));
     function _enter(uint256 value_) internal returns (uint256 amount) {
         vm.deal(USER, value_);
         vm.prank(USER);
@@ -91,6 +219,10 @@ contract RandomRewardsTest is Test {
         require(price > 0, "invalid price");
 
         amount = value_ / uint256(price);
+    }
+
+    function _expectedRandomResult(uint256 requestId) internal returns (uint256) {
+        return uint256(keccak256(abi.encode(requestId, 0)));
     }
 
     // function testEnterRevertIfValueIsZero() public {
