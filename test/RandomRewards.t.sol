@@ -246,11 +246,6 @@ contract RandomRewardsTest is Test {
         assertEq(chipToken.balanceOf(address(randomRewards)),chipTokensAmount-rewards);
     }
 
-    //vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
-    // randomRewards.withdraw(requestId);
-
-    //     console.log(chipToken.balanceOf(USER));
-    //     console.log(chipToken.balanceOf(address(randomRewards)));
     function _enter(uint256 value_) internal returns (uint256 amount) {
         vm.deal(USER, value_);
         vm.prank(USER);
