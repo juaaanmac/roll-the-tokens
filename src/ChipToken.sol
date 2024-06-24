@@ -19,7 +19,7 @@ contract ChipToken is ERC20, Ownable {
     event PlayerEntered(address player, uint256 amount);
     event BalanceWithdrawn(uint256 amount);
 
-    constructor(address priceFeed) ERC20("ChipTokens", "CHT") Ownable(msg.sender) {
+    constructor(address priceFeed, string memory name, string memory symbol) ERC20(name, symbol) Ownable(msg.sender) {
         _priceFeed = PriceFeed(priceFeed);
     }
 

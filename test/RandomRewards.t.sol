@@ -31,7 +31,7 @@ contract RandomRewardsTest is Test {
     function setUp() public {
         aggregatorMock = new MockV3Aggregator(DECIMALS, INITIAL_ANSWER);
         priceFeed = new PriceFeed(address(aggregatorMock));
-        chipToken = new ChipToken(address(priceFeed));
+        chipToken = new ChipToken(address(priceFeed), "ChipTokens", "CHT");
         vrfCoordinatorMock = new VRFCoordinatorV2Mock(1, 1);
         randomRewards =
             new RandomRewards(SUSCRIPTION_ID, address(vrfCoordinatorMock), address(chipToken), RANDOM_MIN, RANDOM_MAX);

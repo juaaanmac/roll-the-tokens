@@ -22,7 +22,7 @@ contract ChipTokenTest is Test {
         mockAggregator = new MockV3Aggregator(DECIMALS, INITIAL_ANSWER);
         priceFeed = new PriceFeed(address(mockAggregator));
         vm.prank(OWNER);
-        chipToken = new ChipTokenHarness(address(priceFeed));
+        chipToken = new ChipTokenHarness(address(priceFeed), "ChipTokens", "CHT");
     }
 
     function testConstructor() public view {

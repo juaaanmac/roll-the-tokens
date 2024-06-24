@@ -57,7 +57,6 @@ contract RandomRewards is Context, VRFConsumerBaseV2, ReentrancyGuard {
     event RequestSent(uint256 requestId);
     event RequestFulfilled(uint256 requestId, uint256 randomResult);
 
-    //0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625
     constructor(
         uint64 subscriptionId_,
         address vrfCoordinatorV2Address,
