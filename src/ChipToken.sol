@@ -49,9 +49,10 @@ contract ChipToken is ERC20, Ownable {
             _balance -= value;
         }
 
+        emit BalanceWithdrawn(value);
+
+        //slither-disable-next-line low-level-calls
         (bool success, ) = payable(msg.sender).call{value: value}("");
         require(success, "failed to withdraw");
-
-        emit BalanceWithdrawn(value);
     }
 }

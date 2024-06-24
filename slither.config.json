@@ -3,8 +3,7 @@
     "exclude_low": false,
     "exclude_medium": false,
     "exclude_high": false,
-    "json": "",
     "disable_color": false,
-    "filter_paths": "(mocks/|test/)",
+    "filter_paths": "test/,lib/",
     "legacy_ast": false
 }

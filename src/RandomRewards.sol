@@ -5,6 +5,7 @@ import "forge-std/console.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SignedMath} from "@openzeppelin/contracts/utils/math/SignedMath.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 import {ChipToken} from "./ChipToken.sol";
@@ -14,7 +15,7 @@ import {ChipToken} from "./ChipToken.sol";
  * @author Juan Macri
  * @notice this smart contract generates random reward tokens
  */
-contract RandomRewards is Context, VRFConsumerBaseV2 {
+contract RandomRewards is Context, VRFConsumerBaseV2, ReentrancyGuard {
     using SafeERC20 for ChipToken;
 
     struct RequestStatus {
@@ -73,13 +74,15 @@ contract RandomRewards is Context, VRFConsumerBaseV2 {
 
     function deposit(uint256 amount) external {
         address sender = _msgSender();
-        _chipToken.safeTransferFrom(sender, address(this), amount);
         _balances[sender] += amount;
         totalStaked += amount;
+
         emit DepositMade(sender, amount);
+
+        _chipToken.safeTransferFrom(sender, address(this), amount);
     }
 
-    function roll() external returns (uint256) {
+    function roll() external nonReentrant returns (uint256) {
         address player = _msgSender();
         require(_balances[player] > 0, "no balance");
 
@@ -130,9 +133,10 @@ contract RandomRewards is Context, VRFConsumerBaseV2 {
             amount = balance - (balance * SignedMath.abs(randomNumber)) / 100;
         }
 
+        _balances[player] = 0;
+
         _chipToken.safeTransferFrom(address(this), player, amount);
 
-        _balances[player] = 0;
     }
 
     function getRequestStatus(uint256 _requestId)
