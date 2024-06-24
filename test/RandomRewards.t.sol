@@ -33,20 +33,12 @@ contract RandomRewardsTest is Test {
         priceFeed = new PriceFeed(address(aggregatorMock));
         chipToken = new ChipToken(address(priceFeed));
         vrfCoordinatorMock = new VRFCoordinatorV2Mock(1, 1);
-        randomRewards = new RandomRewards(
-            SUSCRIPTION_ID,
-            address(vrfCoordinatorMock),
-            address(chipToken),
-            RANDOM_MIN,
-            RANDOM_MAX
-        );
+        randomRewards =
+            new RandomRewards(SUSCRIPTION_ID, address(vrfCoordinatorMock), address(chipToken), RANDOM_MIN, RANDOM_MAX);
 
         vrfCoordinatorMock.createSubscription();
         vrfCoordinatorMock.addConsumer(SUSCRIPTION_ID, address(randomRewards));
-        vrfCoordinatorMock.fundSubscription(
-            SUSCRIPTION_ID,
-            1000000000000000000
-        );
+        vrfCoordinatorMock.fundSubscription(SUSCRIPTION_ID, 1000000000000000000);
     }
 
     function testDepositBalance(uint256 value) public {
@@ -63,11 +55,7 @@ contract RandomRewardsTest is Test {
         randomRewards.deposit(chipTokensAmount);
 
         assertEq(chipToken.balanceOf(USER), 0, "invalid user balance");
-        assertEq(
-            chipToken.balanceOf(address(randomRewards)),
-            chipTokensAmount,
-            "invalid RandomRewards balance"
-        );
+        assertEq(chipToken.balanceOf(address(randomRewards)), chipTokensAmount, "invalid RandomRewards balance");
     }
 
     function testDepositEvent(uint256 value) public {
@@ -124,9 +112,7 @@ contract RandomRewardsTest is Test {
         randomRewards.roll();
     }
 
-    function testGetRequestStatusRevertsIfRequestIdDoesNotExists(
-        uint256 nonExistentRequestId
-    ) public {
+    function testGetRequestStatusRevertsIfRequestIdDoesNotExists(uint256 nonExistentRequestId) public {
         vm.assume(nonExistentRequestId > 1);
 
         vm.expectRevert("nonexistent request");
@@ -146,14 +132,9 @@ contract RandomRewardsTest is Test {
 
         uint256 requestId = randomRewards.roll();
 
-        vrfCoordinatorMock.fulfillRandomWords(
-            requestId,
-            address(randomRewards)
-        );
+        vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
 
-        (bool fulfilled, uint256 randomResult) = randomRewards.getRequestStatus(
-            requestId
-        );
+        (bool fulfilled, uint256 randomResult) = randomRewards.getRequestStatus(requestId);
 
         uint256 expectedResult = _expectedRandomResult(requestId);
 
@@ -172,13 +153,8 @@ contract RandomRewardsTest is Test {
 
         uint256 requestId = randomRewards.roll();
 
-        vrfCoordinatorMock.fulfillRandomWords(
-            requestId,
-            address(randomRewards)
-        );
-        (bool fulfilled, uint256 randomResult) = randomRewards.getRequestStatus(
-            requestId
-        );
+        vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
+        (bool fulfilled, uint256 randomResult) = randomRewards.getRequestStatus(requestId);
         assertEq(fulfilled, true);
         assertEq(randomResult, _expectedRandomResult(requestId));
     }
@@ -196,26 +172,16 @@ contract RandomRewardsTest is Test {
 
         vm.expectEmit(true, true, false, false);
         emit RequestFulfilled(requestId, _expectedRandomResult(requestId));
-        vrfCoordinatorMock.fulfillRandomWords(
-            requestId,
-            address(randomRewards)
-        );
+        vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
     }
 
-    function testFulfillRandomWordsRevertsIfRequestIdDoesNotExists(
-        uint256 nonExistentRequestId
-    ) public {
+    function testFulfillRandomWordsRevertsIfRequestIdDoesNotExists(uint256 nonExistentRequestId) public {
         vm.assume(nonExistentRequestId > 1);
         vm.expectRevert("nonexistent request");
-        vrfCoordinatorMock.fulfillRandomWords(
-            nonExistentRequestId,
-            address(randomRewards)
-        );
+        vrfCoordinatorMock.fulfillRandomWords(nonExistentRequestId, address(randomRewards));
     }
 
-    function testWithdrawRevertsIfRequestIdDoesNotExists(
-        uint256 nonExistentRequestId
-    ) public {
+    function testWithdrawRevertsIfRequestIdDoesNotExists(uint256 nonExistentRequestId) public {
         vm.assume(nonExistentRequestId > 1);
         vm.expectRevert("nonexistent request");
         randomRewards.withdraw(nonExistentRequestId);
@@ -232,18 +198,15 @@ contract RandomRewardsTest is Test {
 
         uint256 requestId = randomRewards.roll();
 
-        vrfCoordinatorMock.fulfillRandomWords(
-            requestId,
-            address(randomRewards)
-        );
+        vrfCoordinatorMock.fulfillRandomWords(requestId, address(randomRewards));
 
         uint256 rewards = _calculateRewards(USER, requestId);
 
         randomRewards.withdraw(requestId);
 
         assertEq(randomRewards.balanceOf(USER), 0);
-        assertEq(chipToken.balanceOf(USER),rewards);
-        assertEq(chipToken.balanceOf(address(randomRewards)),chipTokensAmount-rewards);
+        assertEq(chipToken.balanceOf(USER), rewards);
+        assertEq(chipToken.balanceOf(address(randomRewards)), chipTokensAmount - rewards);
     }
 
     function _enter(uint256 value_) internal returns (uint256 amount) {
@@ -257,16 +220,11 @@ contract RandomRewardsTest is Test {
         amount = value_ / uint256(price);
     }
 
-    function _expectedRandomResult(
-        uint256 requestId
-    ) internal pure returns (uint256) {
+    function _expectedRandomResult(uint256 requestId) internal pure returns (uint256) {
         return uint256(keccak256(abi.encode(requestId, 0)));
     }
 
-    function _calculateRewards(
-        address player,
-        uint256 requestId
-    ) internal view returns (uint256) {
+    function _calculateRewards(address player, uint256 requestId) internal view returns (uint256) {
         (, uint256 randomResult) = randomRewards.getRequestStatus(requestId);
 
         // To generate a random number between -5 and 10 inclusive

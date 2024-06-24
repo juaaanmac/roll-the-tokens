@@ -19,9 +19,7 @@ contract ChipToken is ERC20, Ownable {
     event PlayerEntered(address player, uint256 amount);
     event BalanceWithdrawn(uint256 amount);
 
-    constructor(
-        address priceFeed
-    ) ERC20("ChipTokens", "CHT") Ownable(msg.sender) {
+    constructor(address priceFeed) ERC20("ChipTokens", "CHT") Ownable(msg.sender) {
         _priceFeed = PriceFeed(priceFeed);
     }
 
@@ -52,7 +50,7 @@ contract ChipToken is ERC20, Ownable {
         emit BalanceWithdrawn(value);
 
         //slither-disable-next-line low-level-calls
-        (bool success, ) = payable(msg.sender).call{value: value}("");
+        (bool success,) = payable(msg.sender).call{value: value}("");
         require(success, "failed to withdraw");
     }
 }

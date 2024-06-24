@@ -68,7 +68,7 @@ contract ChipTokenTest is Test {
 
     function testWithdrawBalance(uint256 value) public {
         vm.assume(value > 1000000);
-        
+
         vm.deal(USER, value);
         vm.prank(USER);
         chipToken.enter{value: value}();
@@ -82,7 +82,7 @@ contract ChipTokenTest is Test {
 
     function testWithdrawEvent(uint256 value) public {
         vm.assume(value > 1000000);
-        
+
         vm.deal(USER, value);
         vm.prank(USER);
         chipToken.enter{value: value}();
@@ -95,7 +95,7 @@ contract ChipTokenTest is Test {
 
     function testWithdrawRevertIfCallerIsNotTheOwner(address notOwner) public {
         uint256 value = 1000000;
-         bytes4 selector = bytes4(keccak256("OwnableUnauthorizedAccount(address)"));
+        bytes4 selector = bytes4(keccak256("OwnableUnauthorizedAccount(address)"));
 
         vm.deal(USER, value);
         vm.prank(USER);

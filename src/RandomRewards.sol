@@ -136,7 +136,6 @@ contract RandomRewards is Context, VRFConsumerBaseV2, ReentrancyGuard {
         _balances[player] = 0;
 
         _chipToken.safeTransferFrom(address(this), player, amount);
-
     }
 
     function getRequestStatus(uint256 _requestId)
