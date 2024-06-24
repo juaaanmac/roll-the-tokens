@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.20;
 
 import "forge-std/console.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
@@ -38,7 +38,7 @@ contract RandomRewards is Context, VRFConsumerBaseV2, ReentrancyGuard {
     VRFCoordinatorV2Interface internal immutable _coordinator;
     uint64 internal immutable _suscriptionId;
     bytes32 internal constant KEY_HASK = 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c;
-    uint32 internal constant CALLBACK_GAS_LIMIT = 100000;
+    uint32 internal constant CALLBACK_GAS_LIMIT = 1e6;
     uint16 internal constant REQUEST_CONFIRMATIONS = 3;
     uint32 internal constant NUM_WORDS = 1;
 
@@ -59,7 +59,7 @@ contract RandomRewards is Context, VRFConsumerBaseV2, ReentrancyGuard {
 
     //0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625
     constructor(
-        uint64 subscriptionId,
+        uint64 subscriptionId_,
         address vrfCoordinatorV2Address,
         address chipToken,
         int8 randomMin_,
@@ -67,7 +67,7 @@ contract RandomRewards is Context, VRFConsumerBaseV2, ReentrancyGuard {
     ) VRFConsumerBaseV2(vrfCoordinatorV2Address) {
         _chipToken = ChipToken(chipToken);
         _coordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2Address);
-        _suscriptionId = subscriptionId;
+        _suscriptionId = subscriptionId_;
         randomMin = randomMin_;
         randomMax = randomMax_;
     }

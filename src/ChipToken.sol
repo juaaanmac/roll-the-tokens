@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.20;
 
 import "forge-std/console.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -13,7 +13,7 @@ import {PriceFeed} from "./PriceFeed.sol";
  *          in RollTheTokens staking pool
  */
 contract ChipToken is ERC20, Ownable {
-    PriceFeed internal _priceFeed;
+    PriceFeed internal immutable _priceFeed;
     uint256 internal _balance;
 
     event PlayerEntered(address player, uint256 amount);
